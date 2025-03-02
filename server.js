@@ -27,7 +27,8 @@ fastify.register(fastifySwagger, {
             { name: 'v2', description: 'Version 2 with fixes' }
         ]
     },
-    exposeRoute: true
+    exposeRoute: true,
+    hideUntagged: false
 });
 
 fastify.register(fastifySwaggerUi, {
