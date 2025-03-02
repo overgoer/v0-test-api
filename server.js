@@ -2,7 +2,7 @@ const fastify = require('fastify')({ logger: true });
 const fastifySwagger = require('@fastify/swagger');
 const fastifySwaggerUi = require('@fastify/swagger-ui');
 
-// Настройка Swagger с автосканированием маршрутов
+// Настройка Swagger с автосканированием маршрутов и тегами
 fastify.register(fastifySwagger, {
     routePrefix: '/documentation',
     swagger: {
@@ -21,7 +21,11 @@ fastify.register(fastifySwagger, {
                 name: 'X-Fix-Bug',
                 in: 'header'
             }
-        }
+        },
+        tags: [
+            { name: 'v1', description: 'Version 1 with bugs' },
+            { name: 'v2', description: 'Version 2 with fixes' }
+        ]
     },
     exposeRoute: true // Включаем автосканирование маршрутов
 });
@@ -85,10 +89,11 @@ function validateAge(age) {
     return age >= 18 && age <= 65;
 }
 
-// Получить всех пользователей (v1) — добавляем schema
+// Получить всех пользователей (v1) — добавляем теги
 fastify.get('/v1/api/users', {
     schema: {
-        description: 'Get all users',
+        description: 'Get all users (v1 with bugs)',
+        tags: ['v1'],
         response: {
             200: {
                 type: 'array',
@@ -100,10 +105,11 @@ fastify.get('/v1/api/users', {
     reply.code(200).send(Object.values(data.users || {}));
 });
 
-// Получить конкретного пользователя по ID (v1, с багом) — добавляем schema
+// Получить конкретного пользователя по ID (v1, с багом) — добавляем теги
 fastify.get('/v1/api/users/:id', {
     schema: {
         description: 'Get a user by ID (v1 with bug)',
+        tags: ['v1'],
         params: {
             type: 'object',
             properties: {
@@ -128,10 +134,11 @@ fastify.get('/v1/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// Получить конкретного пользователя по ID (v2, исправленная логика) — схема уже есть
+// Получить конкретного пользователя по ID (v2, исправленная логика) — добавляем теги
 fastify.get('/v2/api/users/:id', {
     schema: {
-        description: 'Get a user by ID',
+        description: 'Get a user by ID (v2 fixed)',
+        tags: ['v2'],
         params: {
             type: 'object',
             properties: {
@@ -154,10 +161,11 @@ fastify.get('/v2/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// Создать нового пользователя (v1, с багам) — добавляем schema
+// Создать нового пользователя (v1, с багам) — добавляем теги
 fastify.post('/v1/api/users', {
     schema: {
         description: 'Create a new user (v1 with bugs)',
+        tags: ['v1'],
         body: {
             type: 'object',
             properties: {
@@ -186,10 +194,11 @@ fastify.post('/v1/api/users', {
     reply.code(201).send(newUser);
 });
 
-// Создать нового пользователя (v2, исправленная логика) — схема уже есть
+// Создать нового пользователя (v2, исправленная логика) — добавляем теги
 fastify.post('/v2/api/users', {
     schema: {
-        description: 'Create a new user',
+        description: 'Create a new user (v2 fixed)',
+        tags: ['v2'],
         body: {
             type: 'object',
             required: ['name', 'age'],
@@ -218,10 +227,11 @@ fastify.post('/v2/api/users', {
     reply.code(201).send(newUser);
 });
 
-// Обновить пользователя (v1, с багам) — добавляем schema
+// Обновить пользователя (v1, с багам) — добавляем теги
 fastify.patch('/v1/api/users/:id', {
     schema: {
         description: 'Update a user (v1 with bugs)',
+        tags: ['v1'],
         params: {
             type: 'object',
             properties: {
@@ -256,10 +266,11 @@ fastify.patch('/v1/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// Обновить пользователя (v2, исправленная логика) — добавляем schema
+// Обновить пользователя (v2, исправленная логика) — добавляем теги
 fastify.patch('/v2/api/users/:id', {
     schema: {
-        description: 'Update a user',
+        description: 'Update a user (v2 fixed)',
+        tags: ['v2'],
         params: {
             type: 'object',
             properties: {
@@ -297,10 +308,11 @@ fastify.patch('/v2/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// Удалить пользователя (v1/v2, одинаковый) — добавляем schema
+// Удалить пользователя (v1/v2, одинаковый) — добавляем теги
 fastify.delete('/v1/api/users/:id', {
     schema: {
         description: 'Delete a user (v1)',
+        tags: ['v1'],
         params: {
             type: 'object',
             properties: {
@@ -329,6 +341,7 @@ fastify.delete('/v1/api/users/:id', {
 fastify.delete('/v2/api/users/:id', {
     schema: {
         description: 'Delete a user (v2)',
+        tags: ['v2'],
         params: {
             type: 'object',
             properties: {
