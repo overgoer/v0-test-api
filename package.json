@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "fastify": "^4.25.2",
-   "@fastify/swagger": "^8.14.0", // Обновим до последней версии для совместимости
-        "@fastify/swagger-ui": "^2.0.0" // Обновим до последней версии для совместимости
+   "@fastify/swagger": "^8.14.0",
+        "@fastify/swagger-ui": "^2.0.0"
   }
 }
 
