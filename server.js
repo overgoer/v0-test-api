@@ -27,8 +27,7 @@ fastify.register(fastifySwagger, {
             { name: 'v1', description: 'Version 1 with bugs' },
             { name: 'v2', description: 'Version 2 with fixes' }
         ]
-    },
-    exposeRoute: true // Включаем автосканирование маршрутов
+    }
 });
 
 fastify.register(fastifySwaggerUi, {
