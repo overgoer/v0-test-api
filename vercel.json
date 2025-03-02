@@ -1,17 +1,6 @@
 {
-    "version": 2,
-    "builds": [{ "src": "server.js", "use": "@vercel/node" }],
-    "routes": [
-        { "src": "/documentation", "dest": "server.js" },
-        { "src": "/documentation/(.*)", "dest": "server.js" },
-        { "src": "/(.*)", "dest": "server.js" }
-    ],
-    "headers": [
-        {
-            "source": "/documentation(.*)",
-            "headers": [
-                { "key": "Content-Security-Policy", "value": "style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-eval' 'unsafe-inline'; default-src 'self' https:" }
-            ]
-        }
-    ]
+  "version": 2,
+  "builds": [{ "src": "server.js", "use": "@vercel/node" }],
+  "routes": [{ "src": "/(.*)", "dest": "server.js" }]
 }
+
