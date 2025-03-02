@@ -41,8 +41,13 @@ fastify.register(fastifySwaggerUi, {
         onRequest: (request, reply, next) => { next() },
         preHandler: (request, reply, next) => { next() }
     },
-    staticCSP: true,
-    transformStaticCSP: (header) => header,
+    staticCSP: false,
+    transformStaticCSP: (header) => {
+        // Разрешаем встроенные стили для Swagger UI
+        return header
+            .replace("style-src 'self' https:", "style-src 'self' https: 'unsafe-inline'")
+            .replace("script-src 'self' https:", "script-src 'self' https: 'unsafe-eval' 'unsafe-inline'");
+    },,
     transformSpecification: (swaggerObject, request, reply) => { return swaggerObject },
     transformSpecificationClone: true
 });
