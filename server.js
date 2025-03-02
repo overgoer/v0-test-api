@@ -122,7 +122,6 @@ fastify.get('/v1/api/users/:id', {
             404: errorSchema
         }
     }
-    ,exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const requestedId = parseInt(id);
@@ -152,7 +151,6 @@ fastify.get('/v2/api/users/:id', {
             404: errorSchema
         }
     }
-    ,exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const user = data.users[id];
