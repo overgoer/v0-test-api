@@ -10,7 +10,6 @@
         { "src": "/v2/api/users", "dest": "server.js" },
         { "src": "/v2/api/users/(.*)", "dest": "server.js" },
         { "src": "/favicon.ico", "dest": "server.js" },
-        { "src": "/api-docs/(.*)", "dest": "server.js" },
         { "src": "/(.*)", "dest": "server.js" }
     ]
 }
