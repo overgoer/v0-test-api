@@ -12,8 +12,7 @@ fastify.register(fastifySwagger, {
             version: '1.0.0'
         },
         host: 'v0-test-api-ten.vercel.app',
-        basePath: '/',
-        schemes: ['https', 'v1'],
+        schemes: ['https'],
         consumes: ['application/json'],
         produces: ['application/json'],
         securityDefinitions: {
