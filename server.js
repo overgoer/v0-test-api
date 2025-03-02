@@ -12,6 +12,7 @@ fastify.register(fastifySwagger, {
             version: '1.0.0'
         },
         host: 'v0-test-api-ten.vercel.app',
+        basePath: '/v1',
         schemes: ['https'],
         consumes: ['application/json'],
         produces: ['application/json'],
@@ -382,9 +383,11 @@ setInterval(() => {
     fastify.log.info('Keeping server alive');
 }, 300000); // Пинг каждые 5 минут
 
-// Запуск сервера
+// Запуск сервера с использованием fastify.ready() и fastify.swagger()
 const start = async () => {
     try {
+        await fastify.ready(); // Ждём, пока все плагины и маршруты зарегистрированы
+        console.log('Swagger spec:', fastify.swagger()); // Проверяем объект Swagger (для отладки)
         await fastify.listen(process.env.PORT || 3000, '0.0.0.0');
         fastify.log.info(`Server listening on ${fastify.server.address().port}`);
         fastify.log.info(`Swagger documentation available at https://v0-test-api-ten.vercel.app/documentation`);
