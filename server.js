@@ -2,7 +2,7 @@ const fastify = require('fastify')({ logger: true });
 const fastifySwagger = require('@fastify/swagger');
 const fastifySwaggerUi = require('@fastify/swagger-ui');
 
-// Настройка Swagger для отображения всех маршрутов
+// Настройка Swagger с автосканированием маршрутов и тегами
 fastify.register(fastifySwagger, {
     routePrefix: '/documentation',
     swagger: {
@@ -51,7 +51,7 @@ fastify.register(fastifySwaggerUi, {
     transformSpecificationClone: true
 });
 
-// Определения схем для пользователей и ошибок
+// Schema definitions
 const userSchema = {
     type: 'object',
     properties: {
@@ -103,8 +103,6 @@ fastify.get('/', async (request, reply) => {
 fastify.get('/favicon.ico', async (request, reply) => {
     reply.code(204).send(); // Возвращаем No Content, игнорируя запрос
 });
-
-// Регистрация всех маршрутов API с версиями v1 (с багам) и v2 (исправленная логика)
 
 // v1: Получить всех пользователей (с багам)
 fastify.get('/v1/api/users', {
@@ -368,7 +366,7 @@ fastify.patch('/v2/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// v2: Удалить пользователя (исправленная логика, такая же, как v1)
+// v2: Удалить пользователя
 fastify.delete('/v2/api/users/:id', {
     schema: {
         description: 'Delete a user (v2)',
@@ -398,7 +396,7 @@ fastify.delete('/v2/api/users/:id', {
     reply.code(200).send({ message: 'User deleted successfully', user });
 });
 
-// Пинг для поддержания активности (опционально, может не работать на бесплатном плане)
+// Пинг для поддержания активности
 setInterval(() => {
     fastify.log.info('Keeping server alive');
 }, 300000); // Пинг каждые 5 минут
