@@ -102,6 +102,7 @@ fastify.get('/v1/api/users', {
             }
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     reply.code(200).send(Object.values(data.users || {}));
 });
@@ -122,6 +123,7 @@ fastify.get('/v1/api/users/:id', {
             404: errorSchema
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const requestedId = parseInt(id);
@@ -151,6 +153,7 @@ fastify.get('/v2/api/users/:id', {
             404: errorSchema
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const user = data.users[id];
@@ -179,6 +182,7 @@ fastify.post('/v1/api/users', {
             400: errorSchema
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     const { name, age } = request.body;
 
@@ -213,6 +217,7 @@ fastify.post('/v2/api/users', {
             400: errorSchema
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     const { name, age } = request.body;
 
@@ -252,6 +257,7 @@ fastify.patch('/v1/api/users/:id', {
             404: errorSchema
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const { name, age } = request.body;
@@ -291,6 +297,7 @@ fastify.patch('/v2/api/users/:id', {
             404: errorSchema
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const { name, age } = request.body;
@@ -331,6 +338,7 @@ fastify.delete('/v1/api/users/:id', {
             404: errorSchema
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const user = data.users[id];
@@ -360,6 +368,7 @@ fastify.delete('/v2/api/users/:id', {
             404: errorSchema
         }
     }
+    exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const user = data.users[id];
