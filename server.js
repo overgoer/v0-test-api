@@ -2,7 +2,7 @@ const fastify = require('fastify')({ logger: true });
 const fastifySwagger = require('@fastify/swagger');
 const fastifySwaggerUi = require('@fastify/swagger-ui');
 
-// Настройка Swagger с автосканированием маршрутов и тегами
+// Настройка Swagger с явным описанием маршрутов
 fastify.register(fastifySwagger, {
     routePrefix: '/documentation',
     swagger: {
@@ -11,7 +11,8 @@ fastify.register(fastifySwagger, {
             description: 'API для тестирования кандидатов на вакансии',
             version: '1.0.0'
         },
-        host: 'v0-test-api-ten.vercel.app', // Укажи реальный хост Vercel
+        host: 'v0-test-api-ten.vercel.app',
+        basePath: '/',
         schemes: ['https'],
         consumes: ['application/json'],
         produces: ['application/json'],
@@ -27,8 +28,7 @@ fastify.register(fastifySwagger, {
             { name: 'v2', description: 'Version 2 with fixes' }
         ]
     },
-    exposeRoute: true,
-    hideUntagged: false
+    exposeRoute: false // Отключаем автосканирование, используем явные схемы
 });
 
 fastify.register(fastifySwaggerUi, {
@@ -90,7 +90,7 @@ function validateAge(age) {
     return age >= 18 && age <= 65;
 }
 
-// Получить всех пользователей (v1) — добавляем теги
+// Получить всех пользователей (v1)
 fastify.get('/v1/api/users', {
     schema: {
         description: 'Get all users (v1 with bugs)',
@@ -106,7 +106,7 @@ fastify.get('/v1/api/users', {
     reply.code(200).send(Object.values(data.users || {}));
 });
 
-// Получить конкретного пользователя по ID (v1, с багом) — добавляем теги
+// Получить конкретного пользователя по ID (v1, с багом)
 fastify.get('/v1/api/users/:id', {
     schema: {
         description: 'Get a user by ID (v1 with bug)',
@@ -135,7 +135,7 @@ fastify.get('/v1/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// Получить конкретного пользователя по ID (v2, исправленная логика) — добавляем теги
+// Получить конкретного пользователя по ID (v2, исправленная логика)
 fastify.get('/v2/api/users/:id', {
     schema: {
         description: 'Get a user by ID (v2 fixed)',
@@ -162,7 +162,7 @@ fastify.get('/v2/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// Создать нового пользователя (v1, с багам) — добавляем теги
+// Создать нового пользователя (v1, с багам)
 fastify.post('/v1/api/users', {
     schema: {
         description: 'Create a new user (v1 with bugs)',
@@ -195,7 +195,7 @@ fastify.post('/v1/api/users', {
     reply.code(201).send(newUser);
 });
 
-// Создать нового пользователя (v2, исправленная логика) — добавляем теги
+// Создать нового пользователя (v2, исправленная логика)
 fastify.post('/v2/api/users', {
     schema: {
         description: 'Create a new user (v2 fixed)',
@@ -228,7 +228,7 @@ fastify.post('/v2/api/users', {
     reply.code(201).send(newUser);
 });
 
-// Обновить пользователя (v1, с багам) — добавляем теги
+// Обновить пользователя (v1, с багам)
 fastify.patch('/v1/api/users/:id', {
     schema: {
         description: 'Update a user (v1 with bugs)',
@@ -267,7 +267,7 @@ fastify.patch('/v1/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// Обновить пользователя (v2, исправленная логика) — добавляем теги
+// Обновить пользователя (v2, исправленная логика)
 fastify.patch('/v2/api/users/:id', {
     schema: {
         description: 'Update a user (v2 fixed)',
@@ -309,7 +309,7 @@ fastify.patch('/v2/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// Удалить пользователя (v1/v2, одинаковый) — добавляем теги
+// Удалить пользователя (v1)
 fastify.delete('/v1/api/users/:id', {
     schema: {
         description: 'Delete a user (v1)',
@@ -339,6 +339,7 @@ fastify.delete('/v1/api/users/:id', {
     reply.code(200).send({ message: 'User deleted successfully', user });
 });
 
+// Удалить пользователя (v2)
 fastify.delete('/v2/api/users/:id', {
     schema: {
         description: 'Delete a user (v2)',
