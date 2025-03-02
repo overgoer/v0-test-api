@@ -179,7 +179,6 @@ fastify.post('/v1/api/users', {
             400: errorSchema
         }
     }
-    ,exposeRoute: true
 }, async (request, reply) => {
     const { name, age } = request.body;
 
@@ -214,7 +213,6 @@ fastify.post('/v2/api/users', {
             400: errorSchema
         }
     }
-    ,exposeRoute: true
 }, async (request, reply) => {
     const { name, age } = request.body;
 
@@ -254,7 +252,6 @@ fastify.patch('/v1/api/users/:id', {
             404: errorSchema
         }
     }
-    ,exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const { name, age } = request.body;
@@ -294,7 +291,6 @@ fastify.patch('/v2/api/users/:id', {
             404: errorSchema
         }
     }
-    ,exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const { name, age } = request.body;
@@ -335,7 +331,6 @@ fastify.delete('/v1/api/users/:id', {
             404: errorSchema
         }
     }
-    ,exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const user = data.users[id];
@@ -365,7 +360,6 @@ fastify.delete('/v2/api/users/:id', {
             404: errorSchema
         }
     }
-    ,exposeRoute: true
 }, async (request, reply) => {
     const { id } = request.params;
     const user = data.users[id];
