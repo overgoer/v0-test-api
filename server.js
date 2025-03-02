@@ -11,8 +11,7 @@ fastify.register(fastifySwagger, {
             description: 'API для тестирования кандидатов на вакансии',
             version: '1.0.0'
         },
-        host: 'v0-test-api-ten.vercel.app',
-        basePath: '/',
+        host: 'v0-test-api-ten.vercel.app', // Укажи реальный хост Vercel
         schemes: ['https'],
         consumes: ['application/json'],
         produces: ['application/json'],
@@ -33,7 +32,6 @@ fastify.register(fastifySwagger, {
 
 fastify.register(fastifySwaggerUi, {
     routePrefix: '/documentation',
-    staticBasePath: '/documentation',
     uiConfig: {
         docExpansion: 'full',
         deepLinking: false
@@ -42,11 +40,8 @@ fastify.register(fastifySwaggerUi, {
         onRequest: (request, reply, next) => { next() },
         preHandler: (request, reply, next) => { next() }
     },
-    staticCSP: false,
-    transformStaticCSP: (header) => {
-        // Разрешаем встроенные стили и скрипты для Swagger UI
-        return "style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-eval' 'unsafe-inline'; default-src 'self' https:";
-    },
+    staticCSP: true,
+    transformStaticCSP: (header) => header,
     transformSpecification: (swaggerObject, request, reply) => { return swaggerObject },
     transformSpecificationClone: true
 });
@@ -94,17 +89,7 @@ function validateAge(age) {
     return age >= 18 && age <= 65;
 }
 
-// Обработка корневого пути / для устранения 404
-fastify.get('/', async (request, reply) => {
-    reply.code(302).redirect('/documentation'); // Перенаправляем на Swagger для удобства
-});
-
-// Обработка /favicon.ico для предотвращения 500
-fastify.get('/favicon.ico', async (request, reply) => {
-    reply.code(204).send(); // Возвращаем No Content, игнорируя запрос
-});
-
-// v1: Получить всех пользователей (с багам)
+// Получить всех пользователей (v1) — добавляем теги
 fastify.get('/v1/api/users', {
     schema: {
         description: 'Get all users (v1 with bugs)',
@@ -120,10 +105,10 @@ fastify.get('/v1/api/users', {
     reply.code(200).send(Object.values(data.users || {}));
 });
 
-// v1: Получить конкретного пользователя по ID (с багом, возвращает ID на 1 меньше)
+// Получить конкретного пользователя по ID (v1, с багом) — добавляем теги
 fastify.get('/v1/api/users/:id', {
     schema: {
-        description: 'Get a user by ID (v1 with bug, returns ID-1)',
+        description: 'Get a user by ID (v1 with bug)',
         tags: ['v1'],
         params: {
             type: 'object',
@@ -139,7 +124,7 @@ fastify.get('/v1/api/users/:id', {
 }, async (request, reply) => {
     const { id } = request.params;
     const requestedId = parseInt(id);
-    const userId = requestedId - 1; // Баг: возвращаем ID на 1 меньше
+    const userId = requestedId - 1; // Баг: возвращаем id на 1 меньше
     const user = data.users[userId];
 
     if (!user) {
@@ -149,122 +134,7 @@ fastify.get('/v1/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// v1: Создать нового пользователя (с багам: нет проверки возраста > 65, принимает любые имена, age необязательное)
-fastify.post('/v1/api/users', {
-    schema: {
-        description: 'Create a new user (v1 with bugs)',
-        tags: ['v1'],
-        body: {
-            type: 'object',
-            properties: {
-                name: { type: 'string' },
-                age: { type: 'number' }
-            }
-        },
-        response: {
-            201: userSchema,
-            400: errorSchema
-        }
-    }
-}, async (request, reply) => {
-    const { name, age } = request.body;
-
-    if (!name) return reply.code(400).send({ message: 'Name is required' });
-    if (age !== undefined && age < 0) return reply.code(400).send({ message: 'Invalid age value' });
-    const status = age === undefined || age < 18 ? 'minor' : 'candidate'; // Баг: нет проверки > 65
-
-    const id = getNextId();
-    const newUser = { id, name, age: age, status }; // age может быть null/undefined
-    data.users[id] = newUser;
-    reply.code(201).send(newUser);
-});
-
-// v1: Обновить пользователя (с багам: принимает любые имена, нет проверки возраста > 65)
-fastify.patch('/v1/api/users/:id', {
-    schema: {
-        description: 'Update a user (v1 with bugs)',
-        tags: ['v1'],
-        params: {
-            type: 'object',
-            properties: {
-                id: { type: 'string' }
-            }
-        },
-        body: {
-            type: 'object',
-            properties: {
-                name: { type: 'string' },
-                age: { type: 'number' }
-            }
-        },
-        response: {
-            200: userSchema,
-            400: errorSchema,
-            404: errorSchema
-        }
-    }
-}, async (request, reply) => {
-    const { id } = request.params;
-    const { name, age } = request.body;
-    const user = data.users[id];
-
-    if (!user) return reply.code(404).send({ message: 'User not found' });
-    if (name) user.name = name; // Баг: принимает любые имена
-    if (age !== undefined) {
-        user.age = age;
-        user.status = age < 18 ? 'minor' : 'candidate'; // Баг: нет проверки > 65
-    }
-    data.users[id] = user;
-    reply.code(200).send(user);
-});
-
-// v1: Удалить пользователя
-fastify.delete('/v1/api/users/:id', {
-    schema: {
-        description: 'Delete a user (v1)',
-        tags: ['v1'],
-        params: {
-            type: 'object',
-            properties: {
-                id: { type: 'string' }
-            }
-        },
-        response: {
-            200: {
-                type: 'object',
-                properties: {
-                    message: { type: 'string' },
-                    user: userSchema
-                }
-            },
-            404: errorSchema
-        }
-    }
-}, async (request, reply) => {
-    const { id } = request.params;
-    const user = data.users[id];
-    if (!user) return reply.code(404).send({ message: 'User not found' });
-    delete data.users[id];
-    reply.code(200).send({ message: 'User deleted successfully', user });
-});
-
-// v2: Получить всех пользователей (исправленная логика, такая же, как v1, но без багов в других маршрутах)
-fastify.get('/v2/api/users', {
-    schema: {
-        description: 'Get all users (v2 fixed)',
-        tags: ['v2'],
-        response: {
-            200: {
-                type: 'array',
-                items: userSchema
-            }
-        }
-    }
-}, async (request, reply) => {
-    reply.code(200).send(Object.values(data.users || {}));
-});
-
-// v2: Получить конкретного пользователя по ID (исправленная логика, возвращает правильный ID)
+// Получить конкретного пользователя по ID (v2, исправленная логика) — добавляем теги
 fastify.get('/v2/api/users/:id', {
     schema: {
         description: 'Get a user by ID (v2 fixed)',
@@ -291,7 +161,40 @@ fastify.get('/v2/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// v2: Создать нового пользователя (исправленная логика: обязательный age, проверка имени и возраста 18–65)
+// Создать нового пользователя (v1, с багам) — добавляем теги
+fastify.post('/v1/api/users', {
+    schema: {
+        description: 'Create a new user (v1 with bugs)',
+        tags: ['v1'],
+        body: {
+            type: 'object',
+            properties: {
+                name: { type: 'string' },
+                age: { type: 'number' }
+            }
+        },
+        response: {
+            201: userSchema,
+            400: errorSchema
+        }
+    }
+}, async (request, reply) => {
+    const { name, age } = request.body;
+
+    if (!name) return reply.code(400).send({ message: 'Name is required' });
+    // Баг 1: Не проверяем верхнюю границу возраста (> 65)
+    if (age !== undefined && age < 0) return reply.code(400).send({ message: 'Invalid age value' });
+    // Баг 2: Принимаем имя с цифрами/символами
+    // Баг 3: age необязательное, присваиваем null/undefined, если не указано
+    const status = age === undefined || age < 18 ? 'minor' : 'candidate'; // Нет проверки > 65
+
+    const id = getNextId();
+    const newUser = { id, name, age: age, status }; // age может быть null/undefined
+    data.users[id] = newUser;
+    reply.code(201).send(newUser);
+});
+
+// Создать нового пользователя (v2, исправленная логика) — добавляем теги
 fastify.post('/v2/api/users', {
     schema: {
         description: 'Create a new user (v2 fixed)',
@@ -324,7 +227,46 @@ fastify.post('/v2/api/users', {
     reply.code(201).send(newUser);
 });
 
-// v2: Обновить пользователя (исправленная логика: проверка имени и возраста 18–65)
+// Обновить пользователя (v1, с багам) — добавляем теги
+fastify.patch('/v1/api/users/:id', {
+    schema: {
+        description: 'Update a user (v1 with bugs)',
+        tags: ['v1'],
+        params: {
+            type: 'object',
+            properties: {
+                id: { type: 'string' }
+            }
+        },
+        body: {
+            type: 'object',
+            properties: {
+                name: { type: 'string' },
+                age: { type: 'number' }
+            }
+        },
+        response: {
+            200: userSchema,
+            400: errorSchema,
+            404: errorSchema
+        }
+    }
+}, async (request, reply) => {
+    const { id } = request.params;
+    const { name, age } = request.body;
+    const user = data.users[id];
+
+    if (!user) return reply.code(404).send({ message: 'User not found' });
+    if (name) user.name = name; // Баг: Принимаем имя с цифрами/символами
+    if (age !== undefined) {
+        user.age = age;
+        user.status = age < 18 ? 'minor' : 'candidate'; // Баг: Нет проверки > 65
+    }
+    data.users[id] = user;
+    reply.code(200).send(user);
+});
+
+// Обновить пользователя (v2, исправленная логика) — добавляем теги
 fastify.patch('/v2/api/users/:id', {
     schema: {
         description: 'Update a user (v2 fixed)',
@@ -366,7 +308,36 @@ fastify.patch('/v2/api/users/:id', {
     reply.code(200).send(user);
 });
 
-// v2: Удалить пользователя
+// Удалить пользователя (v1/v2, одинаковый) — добавляем теги
+fastify.delete('/v1/api/users/:id', {
+    schema: {
+        description: 'Delete a user (v1)',
+        tags: ['v1'],
+        params: {
+            type: 'object',
+            properties: {
+                id: { type: 'string' }
+            }
+        },
+        response: {
+            200: {
+                type: 'object',
+                properties: {
+                    message: { type: 'string' },
+                    user: userSchema
+                }
+            },
+            404: errorSchema
+        }
+    }
+}, async (request, reply) => {
+    const { id } = request.params;
+    const user = data.users[id];
+    if (!user) return reply.code(404).send({ message: 'User not found' });
+    delete data.users[id];
+    reply.code(200).send({ message: 'User deleted successfully', user });
+});
+
 fastify.delete('/v2/api/users/:id', {
     schema: {
         description: 'Delete a user (v2)',
@@ -396,17 +367,14 @@ fastify.delete('/v2/api/users/:id', {
     reply.code(200).send({ message: 'User deleted successfully', user });
 });
 
-// Пинг для поддержания активности
+// Пинг для поддержания активности (опционально, может не работать на бесплатном плане)
 setInterval(() => {
     fastify.log.info('Keeping server alive');
 }, 300000); // Пинг каждые 5 минут
 
-// Запуск сервера с отладкой для Swagger
+// Запуск сервера
 const start = async () => {
     try {
-        await fastify.ready(); // Ждём, пока все плагины и маршруты зарегистрированы
-        fastify.log.info('Routes registered:', Object.keys(fastify.routes)); // Логируем зарегистрированные маршруты
-        fastify.log.info('Swagger spec:', fastify.swagger()); // Проверяем объект Swagger
         await fastify.listen(process.env.PORT || 3000, '0.0.0.0');
         fastify.log.info(`Server listening on ${fastify.server.address().port}`);
         fastify.log.info(`Swagger documentation available at https://v0-test-api-ten.vercel.app/documentation`);
