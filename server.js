@@ -128,7 +128,7 @@ app.get('/v1/api/users/:id', (req, res) => {
     res.status(200).json(user);
 });
 
-// v1: Создать нового пользователя (с багам: нет проверки возраста > 65, принимает любые имена, age необязательное)
+// v1: Создать нового пользователя (с багам: нет проверки возраста > 65, принимает любые имена, age обязательное)
 /**
  * @route POST /v1/api/users
  * @group v1 - Version 1 with bugs
@@ -139,20 +139,22 @@ app.get('/v1/api/users/:id', (req, res) => {
 app.post('/v1/api/users', (req, res) => {
     const { name, age } = req.body;
 
-    if (!name) {
-        return res.status(400).json({ message: 'Name is required' });
+    // Проверка на обязательность обоих полей
+    if (!name || age === undefined || age === null) {
+        return res.status(400).json({ message: 'Both name and age are required' });
     }
-    if (age !== undefined && age < 0) {
+    // Проверка, что возраст не отрицательный (баг: нет проверки > 65)
+    if (age < 0) {
         return res.status(400).json({ message: 'Invalid age value' });
     }
-    const status = age === undefined || age < 18 ? 'minor' : 'candidate'; // Баг: нет проверки > 65
+    // Баг: статус устанавливает только на основе < 18, нет проверки > 65
+    const status = age < 18 ? 'minor' : 'candidate';
 
     const id = getNextId();
-    const newUser = { id, name, age: age, status }; // age может быть null/undefined
+    const newUser = { id, name, age, status }; // age теперь всегда присутствует
     data.users[id] = newUser;
     res.status(201).json(newUser);
 });
-
 // v1: Обновить пользователя (с багам: принимает любые имена, нет проверки возраста > 65)
 /**
  * @route PATCH /v1/api/users/{id}
@@ -171,11 +173,20 @@ app.patch('/v1/api/users/:id', (req, res) => {
     if (!user) {
         return res.status(404).json({ message: 'User not found' });
     }
-    if (name) user.name = name; // Баг: принимает любые имена
-    if (age !== undefined) {
-        user.age = age;
-        user.status = age < 18 ? 'minor' : 'candidate'; // Баг: нет проверки > 65
+    // Проверка на обязательность обоих полей
+    if (!name || age === undefined || age === null) {
+        return res.status(400).json({ message: 'Both name and age are required' });
     }
+    // Проверка, что возраст не отрицательный (баг: нет проверки > 65)
+    if (age < 0) {
+        return res.status(400).json({ message: 'Invalid age value' });
+    }
+    // Баг: статус устанавливает только на основе < 18, нет проверки > 65
+    user.status = age < 17 ? 'minor' : 'candidate';
+
+    // Обновляем имя (баг: принимает любые имена) и возраст
+    user.name = name;
+    user.age = age;
     data.users[id] = user;
     res.status(200).json(user);
 });
