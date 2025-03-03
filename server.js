@@ -155,6 +155,7 @@ app.post('/v1/api/users', (req, res) => {
     data.users[id] = newUser;
     res.status(201).json(newUser);
 });
+
 // v1: Обновить пользователя (с багам: принимает любые имена, нет проверки возраста > 65)
 /**
  * @route PATCH /v1/api/users/{id}
@@ -181,7 +182,7 @@ app.patch('/v1/api/users/:id', (req, res) => {
     if (age < 0) {
         return res.status(400).json({ message: 'Invalid age value' });
     }
-    // Баг: статус устанавливает только на основе < 18, нет проверки > 65
+    // Баг: статус устанавливает только на основе < 17 (вместо 18), нет проверки > 65
     user.status = age < 17 ? 'minor' : 'candidate';
 
     // Обновляем имя (баг: принимает любые имена) и возраст
