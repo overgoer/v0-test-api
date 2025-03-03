@@ -148,7 +148,7 @@ app.post('/v1/api/users', (req, res) => {
         return res.status(400).json({ message: 'Invalid age value' });
     }
     // Баг: статус устанавливает только на основе < 18, нет проверки > 65
-    const status = age < 18 ? 'minor' : 'candidate';
+    const status = age < 17 ? 'minor' : 'candidate';
 
     const id = getNextId();
     const newUser = { id, name, age, status }; // age теперь всегда присутствует
@@ -242,7 +242,7 @@ app.get('/v2/api/users/:id', (req, res) => {
     res.status(200).json(user);
 });
 
-// v2: Создать нового пользователя (с проверками имени и возраста 18–65)
+// v2: Создать нового пользователя (с проверками имени, возраст любой, статус по возрасту)
 /**
  * @route POST /v2/api/users
  * @group v2 - Version 2 with fixes
@@ -259,11 +259,11 @@ app.post('/v2/api/users', (req, res) => {
     if (!validateName(name)) {
         return res.status(400).json({ message: 'Name must contain only letters, hyphens, and spaces' });
     }
-    if (age === undefined) {
-        return res.status(400).json({ message: 'Age is required and must be between 18 and 65' });
+    if (age === undefined || age === null) {
+        return res.status(400).json({ message: 'Age is required and must be a positive number' });
     }
-    if (!validateAge(age)) {
-        return res.status(400).json({ message: 'Age must be between 18 and 65' });
+    if (age < 0) {
+        return res.status(400).json({ message: 'Age must be a positive number' });
     }
 
     const id = getNextId();
@@ -273,7 +273,7 @@ app.post('/v2/api/users', (req, res) => {
     res.status(201).json(newUser);
 });
 
-// v2: Обновить пользователя (с проверками имени и возраста 18–65)
+// v2: Обновить пользователя (с проверками имени, возраст любой, статус по возрасту)
 /**
  * @route PATCH /v2/api/users/{id}
  * @group v2 - Version 2 with fixes
@@ -294,8 +294,8 @@ app.patch('/v2/api/users/:id', (req, res) => {
     if (name && !validateName(name)) {
         return res.status(400).json({ message: 'Name must contain only letters, hyphens, and spaces' });
     }
-    if (age !== undefined && !validateAge(age)) {
-        return res.status(400).json({ message: 'Age must be between 18 and 65' });
+    if (age !== undefined && (age === null || age < 0)) {
+        return res.status(400).json({ message: 'Age must be a positive number' });
     }
 
     if (name) user.name = name;
