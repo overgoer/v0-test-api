@@ -1,6 +1,8 @@
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc');
+const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 const app = express();
 
@@ -46,6 +48,114 @@ function validateName(name) {
 function validateAge(age) {
     return age >= 18 && age <= 65;
 }
+
+// Функция для генерации случайного ключа (длина 16 символов)
+function generateApiKey() {
+    return [...Array(16)]
+        .map(() => Math.random().toString(36)[2])
+        .join('')
+        .toUpperCase();
+}
+
+// Функция загрузки или генерации ключей
+function loadOrGenerateKeys(targetAvailableCount = 100) {
+    let keysData = { availableKeys: [], usedKeys: [] };
+    try {
+        if (fs.existsSync('api_keys.json')) {
+            const data = fs.readFileSync('api_keys.json', 'utf8');
+            keysData = JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Error loading keys:', error);
+    }
+
+    // Дополняем availableKeys до целевого числа
+    while (keysData.availableKeys.length < targetAvailableCount) {
+        const newKey = generateApiKey();
+        if (!keysData.availableKeys.includes(newKey) && !keysData.usedKeys.includes(newKey)) {
+            keysData.availableKeys.push(newKey);
+        }
+    }
+
+    // Сохраняем обновлённые данные
+    fs.writeFileSync('api_keys.json', JSON.stringify(keysData, null, 2));
+    return keysData;
+}
+
+// Глобальные переменные для ключей
+const keysData = loadOrGenerateKeys();
+const availableKeys = keysData.availableKeys;
+const usedKeys = keysData.usedKeys;
+console.log(`Loaded ${availableKeys.length} available keys and ${usedKeys.length} used keys`);
+
+// Middleware для проверки API-ключа
+const validateApiKey = (req, res, next) => {
+    const apiKey = req.headers['x-fix-bug']; // Проверяем ключ из заголовка
+    if (apiKey && (availableKeys.includes(apiKey) || usedKeys.includes(apiKey))) {
+        next(); // Ключ валиден (как доступный, так и использованный)
+    } else {
+        return res.status(401).json({ message: 'Invalid or missing API key' });
+    }
+};
+
+// Настройка транспорта для Nodemailer
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'eddythetest@gmail.com', // Твой email
+        pass: 'Bowtie12345' // Код приложения для Gmail
+    }
+});
+
+// Функция отправки письма
+function sendApiKeyEmail(to, apiKey, postmanLink, docLink) {
+    const mailOptions = {
+        from: 'eddythetest@gmail.com',
+        to,
+        subject: 'Ваш API-ключ для практикума',
+        text: `Привет! Спасибо за покупку. Твой API-ключ: ${apiKey}. Postman-коллекция: ${postmanLink}, Документация: ${docLink}. Пишите вопросы на eddythetest@gmail.com или в телеграм канал https://t.me/+0SEZp8u5TbdhMmFi`
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.error('Error sending email:', error);
+        } else {
+            console.log('Email sent:', info.response);
+        }
+    });
+}
+
+// Маршрут для получения ключа
+app.post('/get-api-key', (req, res) => {
+    const { email } = req.body; // Предполагается, что email приходит в теле запроса
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    if (availableKeys.length === 0) {
+        return res.status(400).json({ message: 'No available API keys' });
+    }
+
+    const newKey = availableKeys.shift(); // Берем первый ключ и удаляем из доступных
+    usedKeys.push(newKey); // Добавляем в использованные
+    fs.writeFileSync('api_keys.json', JSON.stringify({ availableKeys, usedKeys }, null, 2)); // Сохраняем изменения
+    sendApiKeyEmail(email, newKey, 'https://drive.google.com/...', 'https://drive.google.com/...'); // Замени ссылки
+    res.status(200).json({ message: 'Key issued', apiKey: newKey });
+});
+
+// Пример webhook для ЮKassa
+app.post('/webhook', express.json(), (req, res) => {
+    const { object } = req.body;
+    if (object.status === 'succeeded' && object.metadata && object.metadata.email) {
+        const email = object.metadata.email;
+        if (availableKeys.length === 0) {
+            return res.status(400).json({ message: 'No available API keys' });
+        }
+        const newKey = availableKeys.shift();
+        usedKeys.push(newKey);
+        sendApiKeyEmail(email, newKey, 'https://drive.google.com/...', 'https://drive.google.com/...'); // Замени ссылки
+        fs.writeFileSync('api_keys.json', JSON.stringify({ availableKeys, usedKeys }, null, 2)); // Сохраняем изменения
+    }
+    res.status(200).send('Webhook received');
+});
 
 // Настройка Swagger/OpenAPI v3
 const options = {
@@ -101,9 +211,10 @@ app.get('/favicon.ico', (req, res) => {
 /**
  * @route GET /v1/api/users
  * @group v1 - Version 1 with bugs
+ * @security apiKey
  * @returns {Array<User>} 200 - List of users
  */
-app.get('/v1/api/users', (req, res) => {
+app.get('/v1/api/users', validateApiKey, (req, res) => {
     res.status(200).json(Object.values(data.users || {}));
 });
 
@@ -111,11 +222,12 @@ app.get('/v1/api/users', (req, res) => {
 /**
  * @route GET /v1/api/users/{id}
  * @group v1 - Version 1 with bugs
+ * @security apiKey
  * @param {string} id.path.required - User ID
  * @returns {User} 200 - User details
  * @returns {Error} 404 - User not found
  */
-app.get('/v1/api/users/:id', (req, res) => {
+app.get('/v1/api/users/:id', validateApiKey, (req, res) => {
     const { id } = req.params;
     const requestedId = parseInt(id);
     const userId = requestedId - 1; // Баг: возвращаем ID на 1 меньше
@@ -132,11 +244,12 @@ app.get('/v1/api/users/:id', (req, res) => {
 /**
  * @route POST /v1/api/users
  * @group v1 - Version 1 with bugs
+ * @security apiKey
  * @param {object} request.body.required - User data
  * @returns {User} 201 - Created user
  * @returns {Error} 400 - Bad request
  */
-app.post('/v1/api/users', (req, res) => {
+app.post('/v1/api/users', validateApiKey, (req, res) => {
     const { name, age } = req.body;
 
     // Проверка на обязательность обоих полей
@@ -160,13 +273,14 @@ app.post('/v1/api/users', (req, res) => {
 /**
  * @route PATCH /v1/api/users/{id}
  * @group v1 - Version 1 with bugs
+ * @security apiKey
  * @param {string} id.path.required - User ID
  * @param {object} request.body.required - User data
  * @returns {User} 200 - Updated user
  * @returns {Error} 400 - Bad request
  * @returns {Error} 404 - User not found
  */
-app.patch('/v1/api/users/:id', (req, res) => {
+app.patch('/v1/api/users/:id', validateApiKey, (req, res) => {
     const { id } = req.params;
     const { name, age } = req.body;
     const user = data.users[id];
@@ -196,11 +310,12 @@ app.patch('/v1/api/users/:id', (req, res) => {
 /**
  * @route DELETE /v1/api/users/{id}
  * @group v1 - Version 1 with bugs
+ * @security apiKey
  * @param {string} id.path.required - User ID
  * @returns {object} 200 - Deletion result
  * @returns {Error} 404 - User not found
  */
-app.delete('/v1/api/users/:id', (req, res) => {
+app.delete('/v1/api/users/:id', validateApiKey, (req, res) => {
     const { id } = req.params;
     const user = data.users[id];
 
@@ -217,9 +332,10 @@ app.delete('/v1/api/users/:id', (req, res) => {
 /**
  * @route GET /v2/api/users
  * @group v2 - Version 2 with fixes
+ * @security apiKey
  * @returns {Array<User>} 200 - List of users
  */
-app.get('/v2/api/users', (req, res) => {
+app.get('/v2/api/users', validateApiKey, (req, res) => {
     res.status(200).json(Object.values(data.users || {}));
 });
 
@@ -227,11 +343,12 @@ app.get('/v2/api/users', (req, res) => {
 /**
  * @route GET /v2/api/users/{id}
  * @group v2 - Version 2 with fixes
+ * @security apiKey
  * @param {string} id.path.required - User ID
  * @returns {User} 200 - User details
  * @returns {Error} 404 - User not found
  */
-app.get('/v2/api/users/:id', (req, res) => {
+app.get('/v2/api/users/:id', validateApiKey, (req, res) => {
     const { id } = req.params;
     const user = data.users[id];
 
@@ -246,11 +363,12 @@ app.get('/v2/api/users/:id', (req, res) => {
 /**
  * @route POST /v2/api/users
  * @group v2 - Version 2 with fixes
+ * @security apiKey
  * @param {object} request.body.required - User data
  * @returns {User} 201 - Created user
  * @returns {Error} 400 - Bad request
  */
-app.post('/v2/api/users', (req, res) => {
+app.post('/v2/api/users', validateApiKey, (req, res) => {
     const { name, age } = req.body;
 
     if (!name) {
@@ -277,13 +395,14 @@ app.post('/v2/api/users', (req, res) => {
 /**
  * @route PATCH /v2/api/users/{id}
  * @group v2 - Version 2 with fixes
+ * @security apiKey
  * @param {string} id.path.required - User ID
  * @param {object} request.body.required - User data
  * @returns {User} 200 - Updated user
  * @returns {Error} 400 - Bad request
  * @returns {Error} 404 - User not found
  */
-app.patch('/v2/api/users/:id', (req, res) => {
+app.patch('/v2/api/users/:id', validateApiKey, (req, res) => {
     const { id } = req.params;
     const { name, age } = req.body;
     const user = data.users[id];
@@ -311,11 +430,12 @@ app.patch('/v2/api/users/:id', (req, res) => {
 /**
  * @route DELETE /v2/api/users/{id}
  * @group v2 - Version 2 with fixes
+ * @security apiKey
  * @param {string} id.path.required - User ID
  * @returns {object} 200 - Deletion result
  * @returns {Error} 404 - User not found
  */
-app.delete('/v2/api/users/:id', (req, res) => {
+app.delete('/v2/api/users/:id', validateApiKey, (req, res) => {
     const { id } = req.params;
     const user = data.users[id];
 
