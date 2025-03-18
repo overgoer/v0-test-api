@@ -1,7 +1,6 @@
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc');
-const fs = require('fs');
 const nodemailer = require('nodemailer');
 
 const app = express();
@@ -57,28 +56,40 @@ function generateApiKey() {
         .toUpperCase();
 }
 
-// Функция загрузки или генерации ключей
+// Функция загрузки или генерации ключей из переменной окружения
 function loadOrGenerateKeys(targetAvailableCount = 100) {
     let keysData = { availableKeys: [], usedKeys: [] };
-    try {
-        if (fs.existsSync('api_keys.json')) {
-            const data = fs.readFileSync('api_keys.json', 'utf8');
-            keysData = JSON.parse(data);
+    const envKeys = process.env.API_KEYS;
+
+    if (envKeys) {
+        try {
+            keysData = JSON.parse(envKeys);
+            // Убеждаемся, что структура корректна
+            if (!Array.isArray(keysData.availableKeys) || !Array.isArray(keysData.usedKeys)) {
+                throw new Error('Invalid API_KEYS structure');
+            }
+            console.log('Loaded keys from environment variable API_KEYS');
+        } catch (error) {
+            console.error('Error parsing API_KEYS from env:', error);
+            console.warn('Falling back to generating new keys.');
         }
-    } catch (error) {
-        console.error('Error loading keys:', error);
     }
 
-    // Дополняем availableKeys до целевого числа
-    while (keysData.availableKeys.length < targetAvailableCount) {
-        const newKey = generateApiKey();
-        if (!keysData.availableKeys.includes(newKey) && !keysData.usedKeys.includes(newKey)) {
-            keysData.availableKeys.push(newKey);
+    // Если ключей меньше целевого числа или их нет, генерируем
+    if (keysData.availableKeys.length < targetAvailableCount) {
+        console.warn('Insufficient keys or no keys found. Generating new keys.');
+        while (keysData.availableKeys.length < targetAvailableCount) {
+            const newKey = generateApiKey();
+            if (!keysData.availableKeys.includes(newKey) && !keysData.usedKeys.includes(newKey)) {
+                keysData.availableKeys.push(newKey);
+            }
+        }
+        // Логируем для ручного обновления
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('New keys generated. Update API_KEYS env variable manually with:', JSON.stringify(keysData));
         }
     }
 
-    // Сохраняем обновлённые данные
-    fs.writeFileSync('api_keys.json', JSON.stringify(keysData, null, 2));
     return keysData;
 }
 
@@ -103,7 +114,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'eddythetest@gmail.com', // Твой email
-        pass: 'Bowtie12345' // Код приложения для Gmail
+        pass: 'твой_код_приложения' // Код приложения для Gmail
     }
 });
 
@@ -113,7 +124,7 @@ function sendApiKeyEmail(to, apiKey, postmanLink, docLink) {
         from: 'eddythetest@gmail.com',
         to,
         subject: 'Ваш API-ключ для практикума',
-        text: `Привет! Спасибо за покупку. Твой API-ключ: ${apiKey}. Postman-коллекция: ${postmanLink}, Документация: ${docLink}. Пишите вопросы на eddythetest@gmail.com или в телеграм канал https://t.me/+0SEZp8u5TbdhMmFi`
+        text: `Привет! Спасибо за покупку. Твой API-ключ: ${apiKey}. Postman-коллекция: ${postmanLink}, Документация: ${docLink}. Пишите вопросы на eddythetest@gmail.com.`
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
@@ -136,7 +147,8 @@ app.post('/get-api-key', (req, res) => {
 
     const newKey = availableKeys.shift(); // Берем первый ключ и удаляем из доступных
     usedKeys.push(newKey); // Добавляем в использованные
-    fs.writeFileSync('api_keys.json', JSON.stringify({ availableKeys, usedKeys }, null, 2)); // Сохраняем изменения
+    // Обновление переменной окружения вручную или через API после деплоя
+    console.log('Keys updated. Update API_KEYS env variable manually with:', JSON.stringify({ availableKeys, usedKeys }));
     sendApiKeyEmail(email, newKey, 'https://drive.google.com/...', 'https://drive.google.com/...'); // Замени ссылки
     res.status(200).json({ message: 'Key issued', apiKey: newKey });
 });
@@ -151,8 +163,8 @@ app.post('/webhook', express.json(), (req, res) => {
         }
         const newKey = availableKeys.shift();
         usedKeys.push(newKey);
+        console.log('Keys updated. Update API_KEYS env variable manually with:', JSON.stringify({ availableKeys, usedKeys }));
         sendApiKeyEmail(email, newKey, 'https://drive.google.com/...', 'https://drive.google.com/...'); // Замени ссылки
-        fs.writeFileSync('api_keys.json', JSON.stringify({ availableKeys, usedKeys }, null, 2)); // Сохраняем изменения
     }
     res.status(200).send('Webhook received');
 });
@@ -166,7 +178,7 @@ const options = {
             description: 'API для тестирования кандидатов на вакансии',
             version: '1.0.0'
         },
-        host: 'v0-test-api-ten.vercel.app',
+        host: 'v0-test-api-git-main-overgoers-projects.vercel.app',
         basePath: '/',
         schemes: ['https'],
         components: {
@@ -450,5 +462,5 @@ app.delete('/v2/api/users/:id', validateApiKey, (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
-    console.log(`Swagger documentation available at https://v0-test-api-ten.vercel.app/documentation`);
+    console.log(`Swagger documentation available at https://v0-test-api-git-main-overgoers-projects.vercel.app/documentation`);
 });
